@@ -42,3 +42,5 @@ coverage.xml
 *.cover
 *.py,cover
 .hypo
+
+generated-posts/
