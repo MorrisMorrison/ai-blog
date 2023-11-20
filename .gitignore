@@ -44,3 +44,4 @@ coverage.xml
 .hypo
 
 generated-posts/
+venv/
