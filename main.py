@@ -7,8 +7,9 @@ import requests
 import json
 import schedule
 import time
-from urllib.parse import urljoin
 import argparse
+from urllib.parse import urljoin
+
 
 chatgpt_api_key = os.environ.get("CHATGPT_API_KEY")
 hashnode_api_key = os.environ.get("HASNODE_API_KEY")
@@ -22,20 +23,27 @@ def main():
     if not check_environment_variables():
         return
     
-    parser = argparse.ArgumentParser(description="AI-Blog Script")
-    parser.add_argument("--scheduled", action="store_true", help="Run the script in scheduled mode")
+    parser = argparse.ArgumentParser(description="ai-blog")
+    parser.add_argument("--scheduled", help="run script in scheduled mode", required=False)
 
     args = parser.parse_args()
 
     if args.scheduled:
-        schedule.every().sunday.at("20:00").do(main)
+        print("Running in scheduled mode.")
+        schedule.every().sunday.at("20:00").do(genereate_content_and_create_post_scheduled)
 
         while True:
             schedule.run_pending()
             time.sleep(1)
     else:
-        main()
+        print("Running in single run mode.")
+        genereate_content_and_create_post()
 
+def genereate_content_and_create_post_scheduled():
+    genereate_content_and_create_post()
+
+def genereate_content_and_create_post():
+    print("Generating content...")
     content = generate_content()
     if content == "":
         print("Content is empty. Skipping post creation.")
@@ -45,11 +53,13 @@ def main():
         print("Content is not valid markdown. Skipping post creation.")
         return
     
+    print("Extract title...")
     title = extract_title(content)
     if title == "Untitled":
         print("Title is empty. Skipping post creation.")
         return
     
+    print("Title: " + title)
     store_content_as_file(title, content)
     post_to_hashnode(title, content)
 
@@ -91,6 +101,9 @@ def execute_chatgpt_prompt(prompt):
     return response.choices[0].text.strip()
 
 def post_to_hashnode(title, content):
+    print("Posting to Hashnode...")
+    hashnode_url = 'https://gql.hashnode.com/'
+
     query = {
         "query": "mutation PublishPost($input: PublishPostInput!) { publishPost(input: $input) { post { id title } } }",
         "variables": {
@@ -121,7 +134,7 @@ def post_to_hashnode(title, content):
         print('Blog post created successfully on Hashnode!')
         print(response.text)
     else:
-        print(f'Error creating blog post. Status code: {response.text}')
+        print(f'Error creating blog post. Status Code: {response.status_code} - Response: {response.text}')
 
 
 def read_file_content(path):
@@ -131,7 +144,8 @@ def read_file_content(path):
     return content
 
 def store_content_as_file(title, content):
-    path = "generated-posts/" + title.lower().replace(" ", "_").replace("\"", "").replace("'", "") + ".md"
+    path = "generated-posts/" + title.lower().replace(" ", "_").replace("\"", "").replace("'", "").replace("/", "_").replace(":", "_").replace(".", "_") + ".md"
+    print("Storing content as file: " + path)
     with open(path, 'w') as file:
         file.write(content)
 
